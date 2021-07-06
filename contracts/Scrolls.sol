@@ -2533,11 +2533,14 @@ contract BuyScrolls is Ownable {
 
     function unStake(uint256 amount) external {
         StakeInfo storage stakes = stakings[msg.sender];
-        if (_availableRewards_test() > 0) harvest();
         stakes.dfcAmount = stakes.dfcAmount.sub(amount);
+        stakes.rewardAmount = stakes.rewardAmount.add(_availableRewards_test());
         stakes.lastUpdatedTime = block.timestamp;
         DFC.transfer(msg.sender, amount);
         if (stakes.dfcAmount == 0) {
+            if (_availableRewards_test() > 0) {
+                harvest();
+            }
             IBEP721(scrollNFT).safeTransferFrom(
                 address(this),
                 msg.sender,
