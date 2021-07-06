@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: UNLICENSED
+
 // File: contracts/SafeMath.sol
 
 pragma solidity >=0.6.0 <0.8.0;
