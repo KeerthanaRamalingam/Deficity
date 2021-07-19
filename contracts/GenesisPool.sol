@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: UNLICENSED
-
 // File: contracts/SafeMath.sol
 
 pragma solidity >=0.6.0 <0.8.0;
@@ -279,43 +277,59 @@ interface IBEP20 {
 contract GenesisPool {
     using SafeMath for uint256;
     IBEP20 public DFC;
+    uint256 totalStakes = 1;
+    
+    struct StakeInfo {
+        uint256 stakedAmount;
+        uint256 stakedTime;
+    }
 
-    mapping(address => uint256) public stakedAmount;
-    mapping(address => uint256) public stakedTime;
+    mapping(address => mapping(uint256 => StakeInfo)) public stakings;
+    mapping(address => uint256) public userTotal;
     uint256 public constant allotedReward = 1000000E18;
     uint256 public rewardsCovered;
     uint256 public totalStaked;
 
-    constructor(IBEP20 token) public {
+    constructor(IBEP20 token) public{
         DFC = token;
     }
 
     function stake(uint256 amount) external returns (bool) {
-        require(stakedAmount[msg.sender] == 0, "User Staked already");
+        StakeInfo storage stakes = stakings[msg.sender][totalStakes];
+        require(stakes.stakedAmount == 0, "User Staked already");
         require(
             allotedReward >= rewardsCovered.add(amount.mul(4)),
             "Rewards greater than alloted"
         );
-        stakedAmount[msg.sender] = amount;
-        stakedTime[msg.sender] = block.timestamp;
+        require(userTotal[msg.sender].add(amount) >= 5000E18, "Execeeds maximum limit");
+        userTotal[msg.sender] = userTotal[msg.sender].add(amount);
+        stakes.stakedAmount = amount;
+        stakes.stakedTime = block.timestamp;
         rewardsCovered = rewardsCovered.add(amount.mul(4));
         totalStaked = totalStaked.add(amount);
         //transfer
         DFC.transferFrom(msg.sender, address(this), amount);
+        totalStakes++;
         return true;
     }
 
-    function unStake() external returns (uint256) {
+    function unStake(uint256 stakeId) external returns (uint256) {
+        StakeInfo storage stakes = stakings[msg.sender][stakeId];
         // User check
-        require(stakedAmount[msg.sender] > 0, "User not Staked");
+        require(stakes.stakedAmount > 0, "User not Staked");
         //Check 90 days
-        require(
-            block.timestamp >= stakedTime[msg.sender].add(90 days),
+        // require(
+        //     block.timestamp >= stakes.stakedTime.add(90 days),
+        //     "UnStake not allowed"
+        // );
+         // for testing
+         require(
+            block.timestamp >= stakes.stakedTime.add(1 days),
             "UnStake not allowed"
         );
-        totalStaked = totalStaked.sub(stakedAmount[msg.sender]);
+        totalStaked = totalStaked.sub(stakes.stakedAmount);
         //transfer staked amount(1) + rewards(4)
-        uint256 amount = stakedAmount[msg.sender].mul(5);
+        uint256 amount = stakes.stakedAmount.mul(5);
         DFC.transfer(msg.sender, amount);
         //return
         return amount;
